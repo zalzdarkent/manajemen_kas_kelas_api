@@ -24,12 +24,6 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: '', 
     },
-    resetPasswordToken: {
-        type: String,
-    },
-    resetPasswordExpires: {
-        type: Date,
-    },
     role: {
         type: String,
         enum: ['admin', 'pelajar'], 
@@ -48,6 +42,15 @@ userSchema.pre('save', async function(next) {
 
 userSchema.methods.matchPassword = async function(password) {
     return await bcrypt.compare(password, this.password);
+};
+
+userSchema.methods.generateAuthToken = function() {
+    const token = jwt.sign({ id: this._id, username: this.username }, process.env.JWT_SECRET, {
+        expiresIn: process.env.JWT_EXPIRES_IN || '24h'
+    });
+    this.token = token;
+    this.save(); 
+    return token;
 };
 
 module.exports = mongoose.model('User', userSchema);

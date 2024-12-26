@@ -3,6 +3,7 @@ const cors = require('cors');
 const connectDB = require('./config/database');
 const { port } = require('./config/env');
 const errorHandler = require('./middlewares/errorHandler');
+const router = require('./routes');
 
 const app = express();
 
@@ -12,7 +13,7 @@ app.use(express.json());
 connectDB();
 
 app.get('/', (req, res) => {
-    res.send('Welcome to API Studio Musik Rental!');
+    res.send('Selamat datang di API Kas Kelas');
 });
 
 // route
