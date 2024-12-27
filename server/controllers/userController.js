@@ -193,6 +193,38 @@ userController.getAllUsers = async (req, res) => {
     }
 };
 
+userController.deleteUser = async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        if (!userId) {
+            return ResponseAPI.error(res, 'User ID harus disediakan.');
+        }
+
+        const user = await User.findByIdAndDelete(userId); 
+
+        if (!user) {
+            return ResponseAPI.error(res, 'User tidak ditemukan', 404);
+        }
+
+        if (user.photo) {
+            const oldPhotoPath = path.join(user.photo.replace(/\\/g, '/'));
+            console.log('Old photo path:', oldPhotoPath);
+
+            if (fs.existsSync(oldPhotoPath)) {
+                fs.unlinkSync(oldPhotoPath);
+                console.log('Old photo deleted');
+            } else {
+                console.log('Old photo does not exist');
+            }
+        }
+
+        ResponseAPI.success(res, null, 'User berhasil dihapus');
+    } catch (error) {
+        console.error(error);
+        ResponseAPI.serverError(res, error);
+    }
+};
 
 userController.logout = async (req, res) => {
     try {

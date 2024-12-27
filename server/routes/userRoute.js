@@ -11,6 +11,7 @@ userRoute.put('/user/update', authMiddleware, upload('user'), userController.upd
 userRoute.put('/user/update-role', authMiddleware, isAdmin, userController.updateRole);
 userRoute.post('/user/logout', authMiddleware, userController.logout);
 userRoute.post('/user/register', userController.register)
-userRoute.get('/user/all', authMiddleware, userController.getAllUsers)
+userRoute.get('/user/all', authMiddleware, isAdmin, userController.getAllUsers)
+userRoute.delete('/user/delete/:userId', authMiddleware, isAdmin, userController.deleteUser)
 
 module.exports = userRoute;
