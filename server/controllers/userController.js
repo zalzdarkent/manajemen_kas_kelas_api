@@ -4,7 +4,6 @@ const fs = require('fs');
 const path = require('path');
 const ResponseAPI = require('../utils/response');
 const bcrypt = require('bcryptjs');
-
 userController.register = async (req, res) => {
     const { username, email, password, role } = req.body;
 
@@ -44,7 +43,6 @@ userController.register = async (req, res) => {
         ResponseAPI.serverError(res, error);
     }
 };
-
 userController.login = async (req, res) => {
     const { email, password } = req.body;
 
@@ -134,6 +132,32 @@ userController.updateProfile = async (req, res) => {
         ResponseAPI.success(res, user, 'Profil berhasil diperbarui');
     } catch (error) {
         ResponseAPI.serverError(res, error);
+    }
+};
+
+userController.updateRole = async (req, res) => {
+    try {
+        const { userId, newRole } = req.body;
+
+        if (!userId || !newRole) {
+            return ResponseAPI.error(res, 'User ID and new role must be provided.');
+        }
+
+        if (!['admin', 'pelajar'].includes(newRole)) {
+            return ResponseAPI.error(res, 'Invalid role provided.');
+        }
+
+        const user = await User.findById(userId).select('-password');
+        if (!user) {
+            return ResponseAPI.notFound(res, 'User not found.');
+        }
+
+        user.role = newRole;
+        await user.save();
+
+        return ResponseAPI.success(res, user, 'Role updated successfully.');
+    } catch (error) {
+        return ResponseAPI.serverError(res, error);
     }
 };
 

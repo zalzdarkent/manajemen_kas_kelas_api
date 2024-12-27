@@ -11,6 +11,7 @@ const authMiddleware = (req, res, next) => {
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.user = decoded; 
+        // console.log('Decoded Token:', decoded);
         next();
     } catch (error) {
         return ResponseAPI.unauthorized(res, 'Token tidak valid');

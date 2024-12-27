@@ -45,7 +45,7 @@ userSchema.methods.matchPassword = async function(password) {
 };
 
 userSchema.methods.generateAuthToken = function() {
-    const token = jwt.sign({ id: this._id, username: this.username }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ id: this._id, username: this.username, role: this.role }, process.env.JWT_SECRET, {
         expiresIn: process.env.JWT_EXPIRES_IN || '24h'
     });
     this.token = token;
