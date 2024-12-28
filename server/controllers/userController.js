@@ -4,22 +4,166 @@ const fs = require('fs');
 const path = require('path');
 const ResponseAPI = require('../utils/response');
 const bcrypt = require('bcryptjs');
-userController.register = async (req, res) => {
-    const { username, email, password, role } = req.body;
+const jwt = require('jsonwebtoken');
+const { sendEmail } = require('../helper');
 
-    if (!username || !email || !password) {
-        return ResponseAPI.error(res, 'Username, email, dan password harus diisi');
+userController.forgotPassword = async (req, res) => {
+    const { email } = req.body;
+
+    try {
+        const user = await User.findOne({ email: email });
+        console.log(user);
+        if (!user) {
+            return ResponseAPI.notFound(res, 'Email tidak ditemukan');
+        }
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+            expiresIn: '1h' 
+        });
+
+        await user.updateOne({ resetPasswordLink: token });
+
+        const templateEmail = {
+            from: process.env.EMAIL_FROM,
+            to: email,
+            subject: 'Link Reset Password',
+            html: `
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Reset Password</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        background-color: #f4f4f4;
+                        margin: 0;
+                        padding: 0;
+                    }
+                    .container {
+                        max-width: 600px;
+                        margin: 20px auto;
+                        background: #ffffff;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+                        overflow: hidden;
+                    }
+                    .header {
+                        background: #4CAF50;
+                        color: #ffffff;
+                        text-align: center;
+                        padding: 20px;
+                    }
+                    .content {
+                        padding: 20px;
+                        text-align: left;
+                        color: #333333;
+                    }
+                    .button {
+                        display: inline-block;
+                        margin: 20px 0;
+                        padding: 10px 20px;
+                        color: #ffffff;
+                        background: #4CAF50;
+                        text-decoration: none;
+                        border-radius: 5px;
+                    }
+                    .footer {
+                        text-align: center;
+                        padding: 10px;
+                        font-size: 12px;
+                        color: #888888;
+                        background: #f4f4f4;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>Reset Password</h1>
+                    </div>
+                    <div class="content">
+                        <p>Halo,</p>
+                        <p>Kami menerima permintaan untuk mengatur ulang kata sandi akun Anda. Klik tombol di bawah ini untuk mengatur ulang kata sandi Anda:</p>
+                        <p style="text-align: center;">
+                            <a href="${process.env.CLIENT_URL}/reset-password/${token}" class="button">Reset Password</a>
+                        </p>
+                        <p>Jika Anda tidak meminta pengaturan ulang kata sandi, abaikan email ini. Link akan kedaluwarsa setelah 1 jam.</p>
+                        <p>Terima kasih,</p>
+                        <p>Tim Dukungan</p>
+                    </div>
+                    <div class="footer">
+                        <p>&copy; ${new Date().getFullYear()} YourCompany. All rights reserved.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            `
+        };
+        sendEmail(templateEmail);
+        ResponseAPI.success(res, {
+            email: req.body.email,
+            token: token
+        }, 'Link reset password telah dikirim ke email anda');
+    } catch (error) {
+        ResponseAPI.serverError(res, error);
+    }
+};
+
+userController.resetPassword = async (req, res) => {
+    const { token, newPassword, confirmPassword } = req.body;
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findOne({ _id: decoded.id, resetPasswordLink: token });
+
+        if (!user) {
+            return ResponseAPI.unauthorized(res, 'Token tidak valid atau pengguna tidak ditemukan');
+        }
+
+        // if (!newPassword || newPassword.length < 6) {
+        //     return ResponseAPI.error(res, 'Password baru harus memiliki setidaknya 6 karakter');
+        // }
+
+        if (newPassword !== confirmPassword) {
+            return ResponseAPI.error(res, 'Password baru dan konfirmasi password tidak cocok');
+        }
+
+        user.password = newPassword;
+        user.resetPasswordLink = null;
+        await user.save();
+
+        ResponseAPI.success(res, null, 'Password berhasil diperbarui');
+    } catch (error) {
+        if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+            return ResponseAPI.unauthorized(res, 'Token tidak valid atau telah kedaluwarsa');
+        }
+        ResponseAPI.serverError(res, error);
+    }
+};
+
+userController.register = async (req, res) => {
+    const { username, email, phoneNumber, password, role } = req.body;
+
+    if (!username || !email || !password || !phoneNumber) {
+        return ResponseAPI.error(res, 'Username, email, nomor telepon, dan password harus diisi');
     }
 
     try {
         const existingUser = await User.findOne({ email });
+        const existingPhone = await User.findOne({ phoneNumber });
         if (existingUser) {
             return ResponseAPI.error(res, 'Email sudah terdaftar');
+        }
+
+        if (existingPhone) {
+            return ResponseAPI.error(res, 'Nomor telepon sudah terdaftar');
         }
 
         const user = new User({
             username,
             email,
+            phoneNumber,
             password,
             role: role || 'pelajar',
         });
@@ -34,6 +178,7 @@ userController.register = async (req, res) => {
                 id: user._id,
                 username: user.username,
                 email: user.email,
+                phone: user.phoneNumber,
                 photo: user.photo,
                 role: user.role,
             }
@@ -69,6 +214,7 @@ userController.login = async (req, res) => {
                 id: user._id,
                 username: user.username,
                 email: user.email,
+                phone: user.phoneNumber,
                 photo: user.photo,
                 role: user.role
             }
@@ -99,7 +245,7 @@ userController.updateProfile = async (req, res) => {
                 return ResponseAPI.error(res, 'Email sudah digunakan oleh user lain');
             }
             updateData.email = email;
-        }        
+        }
 
         if (req.file) {
             const user = await User.findById(userId);
@@ -163,9 +309,9 @@ userController.updateRole = async (req, res) => {
 
 userController.getUser = async (req, res) => {
     try {
-        const userId = req.user.id; 
-        
-        const user = await User.findById(userId).select('-password'); 
+        const userId = req.user.id;
+
+        const user = await User.findById(userId).select('-password');
 
         if (!user) {
             return ResponseAPI.error(res, 'User tidak ditemukan', 404);
@@ -180,7 +326,7 @@ userController.getUser = async (req, res) => {
 
 userController.getAllUsers = async (req, res) => {
     try {
-        const users = await User.find().select('-password'); 
+        const users = await User.find().select('-password');
 
         if (!users || users.length === 0) {
             return ResponseAPI.error(res, 'Tidak ada pengguna ditemukan', 404);
@@ -201,7 +347,7 @@ userController.deleteUser = async (req, res) => {
             return ResponseAPI.error(res, 'User ID harus disediakan.');
         }
 
-        const user = await User.findByIdAndDelete(userId); 
+        const user = await User.findByIdAndDelete(userId);
 
         if (!user) {
             return ResponseAPI.error(res, 'User tidak ditemukan', 404);

@@ -12,6 +12,11 @@ const userSchema = new mongoose.Schema({
         required: true,
         unique: true,
     },
+    phoneNumber: {
+        type: String,
+        required: true,
+        unique: true
+    },
     password: {
         type: String,
         required: true,
@@ -29,6 +34,10 @@ const userSchema = new mongoose.Schema({
         enum: ['admin', 'pelajar'], 
         default: 'pelajar', 
     },
+    resetPasswordLink: {
+        type: String,
+        default: ''
+    }
 }, {
     timestamps: true, 
 });

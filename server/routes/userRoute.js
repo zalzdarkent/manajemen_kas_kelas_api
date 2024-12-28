@@ -13,5 +13,7 @@ userRoute.post('/user/logout', authMiddleware, userController.logout);
 userRoute.post('/user/register', userController.register)
 userRoute.get('/user/all', authMiddleware, isAdmin, userController.getAllUsers)
 userRoute.delete('/user/delete/:userId', authMiddleware, isAdmin, userController.deleteUser)
+userRoute.post('/user/forgot-password', userController.forgotPassword);
+userRoute.post('/user/reset-password', userController.resetPassword);
 
 module.exports = userRoute;

@@ -6,7 +6,8 @@ const { mongodbUri } = require('../config/env');
 const users = [
     {
         username: 'zalz',
-        email: 'zalzdarker@gmail.com',
+        email: 'zalzdarkent@gmail.com',
+        phoneNumber: '081361415931',
         password: 'zalz12345',
         token: '',
         photo: '',
